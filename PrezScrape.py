@@ -7,7 +7,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import nltk
-import sys
+import wordcloud
 
 #Grab the first webpage that contains links to the transcripts
 webpage = requests.get('http://www.presidency.ucsb.edu/debates.php')
@@ -30,6 +30,19 @@ urls = [a.get('href') for a in soup.find_all(href=re.compile('pid='))]
 def helpMe(func):
 	''' This is the DocString it can be found at helpMe.__doc__h\n'''
 	print(func.__doc__)
+
+
+def getText(url):
+	request = requests.get(url)
+	souped = BeautifulSoup(request.text, 'html.parser')
+	return souped.find_all(class_="displaytext")[0].text
+
+Debates = [getText(url) for url in urls]
+#class="displaytext"
+
+
+
+
 '''
 	
 def filter(tags):
@@ -40,10 +53,7 @@ def filter(tags):
 
 urls = filter(tags)
 
-def getPage(url):
-	request = requests.get(url)
-	souped = BeautifulSoup(request.text, 'html.parser')
-	return souped
+
 
 pages = [getPage(url) for url in urls]
 
