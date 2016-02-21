@@ -1,5 +1,6 @@
 import datetime
 import json
+import re
 
 debateDict = {}
 
@@ -13,6 +14,23 @@ def getDate(dateString):
 
 sortedKeys = sorted(debateDict.keys(), key=lambda x: getDate(x[1]), reverse=True)
 lastDemDebate = debateDict[sortedKeys[1]]
+
+
+
+def makeSpeakerDic(unfilt):
+	filtered = re.findall("([A-Z]+:.*?)[A-Z]+:", unfilt, re.DOTALL)
+	dic = {}
+	for t in filtered[1:]:
+		res = re.search("[A-Z]+:", t)
+		key = t[res.start():res.end()-1].lower()
+		value = t[res.end():]
+		if key not in dic:
+			dic[key] = []
+		dic[key].append(value)
+
+	return dic
+
+betterD = makeSpeakerDic(lastDemDebate)
 '''
 
 def filter(tags):
