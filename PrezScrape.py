@@ -1,70 +1,65 @@
 import datetime
 import json
 import re
+import string
+import nltk
+from collections import Counter
 
-debateDict = {}
-
-with open('debates.json', 'r') as infile:
-	debateDict = json.load(infile)
-	debateDict = {tuple(key.split("|")): value for key, value in debateDict.items()}
+stopwords = set(nltk.corpus.stopwords.words('english'))
+regex = re.compile('[%s]' % re.escape(string.punctuation))
 
 
 def getDate(dateString):
 	return datetime.datetime.strptime(dateString, "%B %d, %Y").date()
 
-sortedKeys = sorted(debateDict.keys(), key=lambda x: getDate(x[1]), reverse=True)
-lastDemDebate = debateDict[sortedKeys[1]]
-
-
-
 def makeSpeakerDic(unfilt):
-	filtered = re.findall("([A-Z]+:.*?)[A-Z]+:", unfilt, re.DOTALL)
+	res = re.search("[A-Z]+: ", unfilt, re.DOTALL)
 	dic = {}
-	for t in filtered[1:]:
-		res = re.search("[A-Z]+:", t)
-		key = t[res.start():res.end()-1].lower()
-		value = t[res.end():]
-		if key not in dic:
-			dic[key] = []
-		dic[key].append(value)
+	text = unfilt[res.end():]
+	name = unfilt[res.start():res.end()-2].lower()
+	nextRes = re.search("[A-Z]+: ", text, re.DOTALL)
+	while nextRes:
+		if name not in dic:
+			dic[name] = []
+		dic[name].append(text[:nextRes.start()])
+		name = text[nextRes.start():nextRes.end()-2].lower()
+		text = text[nextRes.end():]
+		res = nextRes
+		nextRes = re.search("[A-Z]+: ", text, re.DOTALL)
 
 	return dic
 
-betterD = makeSpeakerDic(lastDemDebate)
-'''
-
-def filter(tags):
-	_list = []
-	for a in tags:
-		_list.append(a.next_element.attrs['href'])
-	return _list
-
-urls = filter(tags)
+debateDict = {}
+with open('debates.json', 'r') as infile:
+	debateDict = json.load(infile)
+	debateDict = {tuple(key.split("|")): value
+				for key, value in debateDict.items()}
 
 
+sortedKeys = sorted(debateDict.keys(), key=lambda x: getDate(x[1]), reverse=True)
+lastDemDebate = debateDict[sortedKeys[1]]
+debateDic = makeSpeakerDic(lastDemDebate)
 
-pages = [getPage(url) for url in urls]
+def tokenize(resp):
+	cleaned = string.replace(resp, "[applause]", "")
+	tokens = [token for token in nltk.word_tokenize(cleaned)
+				if token.lower() not in stopwords and
+					token.lower() != "applause"]
+	return tokens
 
-#Get the debate text from a given page
-pages = [page.find(class_="displaytext").getText() for page in pages]
-for p in pages:
-	print(p)
 
-	Let's make some BeautifulSoup objects out of the pages
-responses = []
-pages = []
-for link in baseURLs:
-	responses.append(requests.get(link))
-for page in responses:
-	pages.append(BeautifulSoup(page.text, 'html.parser'))
+def candidateString(name, dict_):
+	return regex.sub(''," ".join(dict_[name]))
 
-print(len(baseURLs))
-print(len(responses))
-print(len(pages))
+def tokenizeCandidate(name, dict_):
+	return tokenize(candidateString(name, dict_))
 
-docdates = soup.find_all(class_='docdate')
+def getCounts(tokens):
+	counts = Counter(tokens)
+	return sorted(counts.items(), key=lambda (k,v): v, reverse=True)
 
-thisYear = soup.find_all(string='2016')
+BernieTokens = tokenizeCandidate('sanders', debateDic)
+HilaryTokens = tokenizeCandidate('clinton', debateDic)
 
-docs = soup.find_all('td', 'doctext')
-'''
+BernieCounts = getCounts(BernieTokens)
+hilaryCounts = getCounts(HilaryTokens)
